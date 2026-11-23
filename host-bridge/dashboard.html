@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>n8n Personal AI Agent Orchestrator & Developer Mission Control Board</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #090d16; color: #f1f5f9; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-[#0d1322]/95 backdrop-blur px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-30">
+    <div>
+      <div class="flex items-center gap-3">
+        <span class="h-3 w-3 rounded-full bg-emerald-400 animate-pulse"></span>
+        <h1 class="text-xl font-bold tracking-tight text-white">
+          n8n Personal AI Agent Orchestrator & Developer Mission Control Board
+        </h1>
+        <span class="text-[11px] px-2.5 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-700/50 font-mono">
+          v1.0 Live
+        </span>
+      </div>
+      <p class="text-xs text-slate-400 mt-1">
+        Paid LLM Orchestrator (Gemini / Claude / OpenAI) → Local Ollama Worker Loop (qwen2.5-coder:7b) → Self-Learning pgvector RAG
+      </p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <button onclick="switchTab('kanban')" id="tab-btn-kanban" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition">
+        1. Kanban & Prompt Launcher (<span id="count-tasks">0</span>)
+      </button>
+      <button onclick="switchTab('workflows')" id="tab-btn-workflows" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+        2. n8n AI Agent Workflows (4)
+      </button>
+      <button onclick="switchTab('tools')" id="tab-btn-tools" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+        3. Live Web Crawler & Local File Tools
+      </button>
+      <button onclick="switchTab('rag')" id="tab-btn-rag" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+        4. Self-Learning RAG Brain (<span id="count-lessons">0</span> Rules / <span id="count-skills">0</span> Skills)
+      </button>
+      <button onclick="switchTab('approvals')" id="tab-btn-approvals" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5">
+        5. PC Permission Gate
+        <span id="badge-approvals" class="hidden px-1.5 py-0.5 text-[10px] rounded-full bg-rose-500 text-white font-bold">0</span>
+      </button>
+      <a href="http://localhost:5678" target="_blank" class="px-3.5 py-2 rounded-lg text-xs font-semibold bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30 transition">
+        Open n8n Canvas (:5678) ↗
+      </a>
+      <a href="/docs" target="_blank" class="px-3 py-2 rounded-lg text-xs font-mono bg-slate-800/80 text-slate-300 hover:bg-slate-700 transition">
+        Swagger API ↗
+      </a>
+    </div>
+  </header>
+
+  <!-- Notification Banner -->
+  <div id="status-banner" class="hidden bg-indigo-950/90 border-b border-indigo-700/60 px-6 py-2.5 text-xs text-indigo-200 flex items-center justify-between">
+    <span id="status-banner-text"></span>
+    <button onclick="document.getElementById('status-banner').classList.add('hidden')" class="text-indigo-400 hover:text-white font-semibold">✕</button>
+  </div>
+
+  <!-- Main View -->
+  <main class="flex-1 p-6 space-y-6">
+    <!-- TAB 1: KANBAN & PROMPT LAUNCHER -->
+    <div id="tab-kanban" class="space-y-6">
+      <section class="bg-[#111827] border border-slate-800 rounded-xl p-5 shadow-lg">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 class="text-sm font-bold text-slate-100">
+            Launch New Automated Development Task (Paid Orchestrator → Local Ollama Worker Loop)
+          </h2>
+          <div class="flex items-center gap-2">
+            <span class="text-[11px] text-emerald-400 bg-emerald-950/60 border border-emerald-700/40 px-2.5 py-0.5 rounded-full">
+              Pre-Task Episodic RAG Recall Active
+            </span>
+          </div>
+        </div>
+
+        <form onsubmit="createTask(event)" class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div class="lg:col-span-4 space-y-3">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Task Title</label>
+              <input id="task-title" type="text" required placeholder="e.g., Crawl Stripe Docs & Patch Webhook Handler" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">Target Local Workspace Path</label>
+              <input id="task-workspace" type="text" value="." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-slate-200" />
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">Paid Orchestrator</label>
+                <select id="task-provider" onchange="updateOrchestratorModels()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white">
+                  <option value="gemini">Google Gemini</option>
+                  <option value="claude">Anthropic Claude</option>
+                  <option value="openai">OpenAI</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">Orchestrator Model</label>
+                <select id="task-orch-model" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white">
+                  <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                  <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">Local Worker (Ollama)</label>
+                <select id="task-worker-model" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-xs text-emerald-300">
+                  <option value="qwen2.5-coder:7b">qwen2.5-coder:7b</option>
+                  <option value="qwen2.5-coder:14b">qwen2.5-coder:14b</option>
+                  <option value="llama3.1:8b">llama3.1:8b</option>
+                  <option value="deepseek-r1:8b">deepseek-r1:8b</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-5 flex flex-col">
+            <label class="block text-[11px] text-slate-400 mb-1">
+              Development Prompt (Decomposed by Paid LLM → Executed by Local Ollama + Tools)
+            </label>
+            <textarea id="task-prompt" rows="5" required placeholder="Describe your development task, bugfix, or documentation crawl. The Paid Orchestrator recalls past RAG error lessons, builds an execution plan, and delegates coding, file patching, web crawling, and pytest verification to your local LLM..." class="w-full flex-1 bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-white focus:border-indigo-500 focus:outline-none"></textarea>
+          </div>
+
+          <div class="lg:col-span-3 flex flex-col justify-between bg-slate-900/70 border border-slate-800 rounded-lg p-3">
+            <div>
+              <span class="block text-[11px] font-semibold text-slate-300 mb-2">Agent Tool & PC Permissions</span>
+              <div class="space-y-1.5 text-xs text-slate-300">
+                <label class="flex items-center gap-2 cursor-pointer"><input id="perm-web" type="checkbox" checked class="rounded bg-slate-800" /> Web Search (SearXNG) & Crawl4AI</label>
+                <label class="flex items-center gap-2 cursor-pointer"><input id="perm-fs" type="checkbox" checked class="rounded bg-slate-800" /> Local File Read / Surgical Patch</label>
+                <label class="flex items-center gap-2 cursor-pointer"><input id="perm-db" type="checkbox" checked class="rounded bg-slate-800" /> PostgreSQL + pgvector Read/Write</label>
+                <label class="flex items-center gap-2 cursor-pointer"><input id="perm-shell" type="checkbox" checked class="rounded bg-slate-800" /> Host PC Terminal & Test Runner</label>
+              </div>
+            </div>
+            <button type="submit" class="mt-4 w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow transition">
+              🚀 Launch Agent Orchestration Flow
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- 5-Column Kanban Board -->
+      <section id="kanban-grid" class="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4"></section>
+    </div>
+
+    <!-- TAB 2: N8N AI AGENT WORKFLOWS INSPECTOR -->
+    <div id="tab-workflows" class="hidden space-y-6">
+      <div class="bg-[#111827] border border-slate-800 rounded-xl p-5">
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <div>
+            <h2 class="text-base font-bold text-white">n8n AI Agent Workflows (Ready in <code class="text-indigo-300">/workflows/*.json</code>)</h2>
+            <p class="text-xs text-slate-400 mt-1">
+              All 4 workflows use n8n's native <code>@n8n/n8n-nodes-langchain.agent</code> node and talk directly to this Host PC Bridge (<code>http://host.docker.internal:8090</code>) and Local Ollama (<code>http://host.docker.internal:11434</code>).
+            </p>
+          </div>
+          <a href="http://localhost:5678" target="_blank" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white">
+            Open n8n Editor (http://localhost:5678) ↗
+          </a>
+        </div>
+        <div id="workflows-list" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: LIVE WEB CRAWLER & LOCAL FILE TOOLS SANDBOX -->
+    <div id="tab-tools" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="lg:col-span-5 bg-[#111827] border border-slate-800 rounded-xl p-5 space-y-4">
+        <h2 class="text-sm font-bold text-white">Interactive Agent Toolset Sandbox</h2>
+        <p class="text-xs text-slate-400">
+          Test the exact Local File, Web Search, Web Crawler, Database, and PC Terminal tools that your n8n Local Ollama Worker invokes.
+        </p>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">Select Capability Tool</label>
+            <select id="sandbox-tool" onchange="updateSandboxDefault()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+              <option value="fs_tree">1. Local Workspace File Tree (/tools/fs/tree)</option>
+              <option value="fs_grep">2. Local Codebase Ripgrep Search (/tools/fs/grep)</option>
+              <option value="fs_semantic">3. Local File Semantic Vector Search (/tools/fs/semantic-search)</option>
+              <option value="web_search">4. Live Web Search (/tools/web/search)</option>
+              <option value="web_crawl">5. Headless Web Crawler & RAG Indexer (/tools/web/crawl-page)</option>
+              <option value="shell_exec">6. Host PC Terminal & Test Runner (/tools/shell/exec)</option>
+              <option value="db_schema">7. Database Schema Inspector (/tools/db/schema)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">Tool Input (Path / Regex / Query / URL / Command)</label>
+            <input id="sandbox-input" type="text" value="." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white" />
+          </div>
+          <button onclick="runSandboxTool()" class="w-full py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition">
+            ▶ Execute Tool via Host Bridge
+          </button>
+        </div>
+      </div>
+      <div class="lg:col-span-7 bg-[#111827] border border-slate-800 rounded-xl p-5 flex flex-col">
+        <h3 class="text-xs font-semibold text-slate-300 mb-2">Live Tool Response Payload</h3>
+        <pre id="sandbox-output" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-4 text-[11px] font-mono text-emerald-300 overflow-auto max-h-[540px]">// Select a tool and click Execute to inspect live output...</pre>
+      </div>
+    </div>
+
+    <!-- TAB 4: SELF-LEARNING RAG BRAIN & SKILLS -->
+    <div id="tab-rag" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="lg:col-span-4 space-y-6">
+        <div class="bg-[#111827] border border-slate-800 rounded-xl p-5 space-y-3">
+          <h2 class="text-sm font-bold text-white">Teach Personal Agent a New Error Lesson</h2>
+          <p class="text-xs text-slate-400">
+            Embedded with <code class="text-emerald-300">nomic-embed-text</code> (768-d) and automatically injected into future n8n Orchestrator & Local Worker prompts whenever a similar task runs.
+          </p>
+          <form onsubmit="teachErrorLesson(event)" class="space-y-2.5 text-xs">
+            <div>
+              <label class="block text-slate-400 mb-1">Domain</label>
+              <select id="err-domain" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white">
+                <option value="web_crawler">web_crawler</option>
+                <option value="local_fs">local_fs</option>
+                <option value="sql_query">sql_query</option>
+                <option value="shell_cmd">shell_cmd</option>
+                <option value="n8n_workflow">n8n_workflow</option>
+                <option value="code_gen">code_gen</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Failure Signature / Mistake</label>
+              <input id="err-sig" type="text" required placeholder="e.g., Webhook payload undefined on $json.prompt" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" />
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Failed Action</label>
+              <input id="err-action" type="text" placeholder="e.g., Accessed $json.prompt instead of $json.body.prompt" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white" />
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Permanent Actionable Rule (RULE: ...)</label>
+              <textarea id="err-rule" rows="3" placeholder="RULE: Always..." class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-white"></textarea>
+            </div>
+            <button type="submit" class="w-full py-2.5 px-4 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold transition">
+              🧠 Embed & Save to Self-Learning RAG
+            </button>
+          </form>
+        </div>
+
+        <div class="bg-[#111827] border border-slate-800 rounded-xl p-5 space-y-3">
+          <h3 class="text-sm font-bold text-white">Sync Local Skill Library into RAG</h3>
+          <p class="text-xs text-slate-400">
+            Ingest skills from <code>$SKILLS_DIR/*/SKILL.md</code> into <code>agent_skills_rag</code>.
+          </p>
+          <input id="skill-filter" type="text" placeholder="Optional filter keyword (e.g. n8n, python, react)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white" />
+          <button onclick="ingestLocalSkills()" class="w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition">
+            📥 Ingest Local Skills into pgvector
+          </button>
+        </div>
+      </div>
+
+      <div class="lg:col-span-8 space-y-6">
+        <div class="bg-[#111827] border border-slate-800 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-amber-300 mb-3">Episodic Error Lessons in RAG Memory</h3>
+          <div id="lessons-list" class="space-y-2.5"></div>
+        </div>
+        <div class="bg-[#111827] border border-slate-800 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-indigo-300 mb-3">Procedural Skills & Tool Playbooks in RAG</h3>
+          <div id="skills-list" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: HOST PC PERMISSION APPROVAL GATE -->
+    <div id="tab-approvals" class="hidden">
+      <div class="bg-[#111827] border border-slate-800 rounded-xl p-5 space-y-4">
+        <div>
+          <h2 class="text-sm font-bold text-white">Host PC & Database Tier-3 Permission Approval Gate (APPROVAL_REQUIRED)</h2>
+          <p class="text-xs text-slate-400 mt-1">
+            Commands matching high-risk patterns in <code>config/permissions.yaml</code> (such as <code>rm -rf</code>, <code>git push</code>, <code>DROP/DELETE</code>) pause execution and appear here for your 1-click decision.
+          </p>
+        </div>
+        <div id="approvals-list" class="space-y-3"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const KANBAN_COLS = [
+      { key: "queued", label: "1. Queued Prompts", badge: "bg-slate-700 text-slate-200" },
+      { key: "orchestrating", label: "2. Paid Orchestrator (Plan & RAG)", badge: "bg-indigo-600/30 text-indigo-300 border border-indigo-500/40" },
+      { key: "worker_loop", label: "3. Local Ollama Worker Loop", badge: "bg-emerald-600/30 text-emerald-300 border border-emerald-500/40" },
+      { key: "learning", label: "4. Verification & Self-Learning RAG", badge: "bg-amber-600/30 text-amber-300 border border-amber-500/40" },
+      { key: "completed", label: "5. Completed & Verified", badge: "bg-cyan-600/30 text-cyan-300 border border-cyan-500/40" }
+    ];
+
+    const MODELS_BY_PROVIDER = {
+      gemini: ["gemini-2.5-pro", "gemini-2.5-flash"],
+      claude: ["claude-sonnet-4-20250514", "claude-3-7-sonnet-20250219"],
+      openai: ["gpt-4o", "o3-mini"]
+    };
+
+    let boardData = { tasks: [], subtasks: [], approvals: [], error_lessons: [], skills: [] };
+
+    function showBanner(msg) {
+      document.getElementById("status-banner-text").textContent = msg;
+      document.getElementById("status-banner").classList.remove("hidden");
+    }
+
+    function switchTab(tab) {
+      ["kanban", "workflows", "tools", "rag", "approvals"].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.toggle("hidden", t !== tab);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (t === tab) {
+          btn.className = "px-3.5 py-2 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition flex items-center gap-1.5";
+        } else {
+          btn.className = "px-3.5 py-2 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition flex items-center gap-1.5";
+        }
+      });
+      if (tab === "workflows") loadWorkflowsInspector();
+    }
+
+    function updateOrchestratorModels() {
+      const prov = document.getElementById("task-provider").value;
+      const sel = document.getElementById("task-orch-model");
+      sel.innerHTML = MODELS_BY_PROVIDER[prov].map(m => `<option value="${m}">${m}</option>`).join("");
+    }
+
+    async function fetchState() {
+      try {
+        const res = await fetch("/api/board/state");
+        boardData = await res.json();
+        renderBoard();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function renderBoard() {
+      document.getElementById("count-tasks").textContent = boardData.tasks.length;
+      document.getElementById("count-lessons").textContent = boardData.error_lessons.length;
+      document.getElementById("count-skills").textContent = boardData.skills.length;
+
+      const pendingCount = boardData.approvals.filter(a => a.status === "pending").length;
+      const badge = document.getElementById("badge-approvals");
+      badge.textContent = pendingCount;
+      badge.classList.toggle("hidden", pendingCount === 0);
+
+      // Render Kanban
+      const grid = document.getElementById("kanban-grid");
+      grid.innerHTML = KANBAN_COLS.map(col => {
+        const colTasks = boardData.tasks.filter(t => t.status === col.key);
+        const cardsHtml = colTasks.map(task => {
+          const subs = boardData.subtasks.filter(s => s.task_id === task.id);
+          const ragHtml = (task.rag_context_injected || []).slice(0, 2).map(r =>
+            `<p class="text-[10px] text-amber-200/90 leading-tight">• ${r}</p>`
+          ).join("");
+          const subsHtml = subs.map(s =>
+            `<div class="text-[10px] bg-slate-950/80 px-2 py-1 rounded flex items-center justify-between gap-1">
+              <span class="text-slate-300 truncate">${s.step_order}. [${s.assigned_specialist}] ${s.title}</span>
+              <span class="text-emerald-400 font-mono shrink-0">${s.status}</span>
+            </div>`
+          ).join("");
+          const moveButtons = KANBAN_COLS.filter(c => c.key !== task.status).map(c =>
+            `<button onclick="moveTask('${task.id}', '${c.key}')" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white transition">→ ${c.key}</button>`
+          ).join("");
+
+          return `
+            <div class="bg-slate-900/95 border border-slate-700/80 hover:border-indigo-500/60 rounded-lg p-3.5 space-y-2.5 shadow">
+              <div class="flex items-start justify-between gap-2">
+                <h3 class="text-xs font-bold text-white leading-snug">${task.title}</h3>
+                <span class="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-700/40 shrink-0">${task.orchestrator_provider}</span>
+              </div>
+              <p class="text-[11px] text-slate-300">${task.prompt}</p>
+              <div class="flex flex-wrap gap-1.5 text-[10px]">
+                <span class="px-2 py-0.5 rounded bg-slate-800 text-indigo-300">Plan: ${task.orchestrator_model}</span>
+                <span class="px-2 py-0.5 rounded bg-emerald-950/70 text-emerald-300 border border-emerald-700/30">Worker: ${task.worker_model}</span>
+              </div>
+              ${ragHtml ? `<div class="bg-amber-950/30 border border-amber-700/30 rounded p-2 space-y-1"><div class="text-[10px] font-semibold text-amber-300">Injected RAG Guardrails</div>${ragHtml}</div>` : ""}
+              ${subsHtml ? `<div class="space-y-1 pt-1 border-t border-slate-800"><span class="text-[10px] font-semibold text-slate-400">Local Worker Sub-Tasks (${subs.length}):</span>${subsHtml}</div>` : ""}
+              <div class="flex flex-wrap items-center gap-1 pt-2 border-t border-slate-800">${moveButtons}</div>
+            </div>
+          `;
+        }).join("");
+
+        return `
+          <div class="bg-[#111827]/90 border border-slate-800 rounded-xl p-3.5 flex flex-col min-h-[480px]">
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+              <span class="text-xs font-semibold px-2.5 py-1 rounded-md ${col.badge}">${col.label}</span>
+              <span class="text-xs font-mono text-slate-400">${colTasks.length}</span>
+            </div>
+            <div class="space-y-3 flex-1">${cardsHtml || '<p class="text-xs text-slate-600 text-center py-10">No tasks in this stage</p>'}</div>
+          </div>
+        `;
+      }).join("");
+
+      // Render RAG Lessons
+      document.getElementById("lessons-list").innerHTML = boardData.error_lessons.map(l => `
+        <div class="bg-slate-900 border border-slate-800 rounded-lg p-3.5 space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white">[${l.domain.toUpperCase()}] ${l.failure_signature}</span>
+            <span class="text-[10px] font-mono text-slate-400">Hits: ${l.hit_count} | Confidence: ${Math.round((l.confidence_score || 0.95)*100)}%</span>
+          </div>
+          <p class="text-xs text-amber-300 font-medium">${l.learned_rule}</p>
+          <p class="text-[11px] text-slate-400">Root Cause: ${l.root_cause} | Failed Action: <code>${l.failed_action}</code></p>
+        </div>
+      `).join("");
+
+      // Render Skills
+      document.getElementById("skills-list").innerHTML = boardData.skills.map(sk => `
+        <div class="bg-slate-900 border border-slate-800 rounded-lg p-3.5 space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-white">${sk.skill_name}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-950 text-indigo-300">${sk.category}</span>
+          </div>
+          <p class="text-[11px] text-slate-300">${sk.description}</p>
+        </div>
+      `).join("");
+
+      // Render Approvals
+      const appEl = document.getElementById("approvals-list");
+      if (boardData.approvals.length === 0) {
+        appEl.innerHTML = `<div class="bg-slate-900/60 border border-slate-800 rounded-lg p-8 text-center text-xs text-slate-400">No high-risk commands awaiting approval.</div>`;
+      } else {
+        appEl.innerHTML = boardData.approvals.map(item => `
+          <div class="bg-slate-900 border border-slate-700 rounded-lg p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold uppercase px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700/40">${item.tool_category}</span>
+                <span class="text-xs font-mono text-white">${item.requested_action}</span>
+              </div>
+              <p class="text-[11px] text-slate-400">Workspace: <code>${item.workspace_path}</code> | Reason: ${item.risk_reason}</p>
+            </div>
+            <div>
+              ${item.status === "pending" ? `
+                <button onclick="decideApproval('${item.id}', 'approved')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white mr-2">Approve & Execute</button>
+                <button onclick="decideApproval('${item.id}', 'rejected')" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white">Reject</button>
+              ` : `<span class="text-xs font-bold uppercase px-2.5 py-1 rounded ${item.status === 'approved' ? 'bg-emerald-950 text-emerald-300' : 'bg-rose-950 text-rose-300'}">${item.status}</span>`}
+            </div>
+          </div>
+        `).join("");
+      }
+    }
+
+    async function createTask(e) {
+      e.preventDefault();
+      const res = await fetch("/api/board/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: document.getElementById("task-title").value,
+          prompt: document.getElementById("task-prompt").value,
+          workspace_path: document.getElementById("task-workspace").value,
+          orchestrator_provider: document.getElementById("task-provider").value,
+          orchestrator_model: document.getElementById("task-orch-model").value,
+          worker_model: document.getElementById("task-worker-model").value,
+          permissions_profile: {
+            web_crawl: document.getElementById("perm-web").checked,
+            fs_write: document.getElementById("perm-fs").checked,
+            db_write: document.getElementById("perm-db").checked,
+            shell_exec: document.getElementById("perm-shell").checked
+          }
+        })
+      });
+      const data = await res.json();
+      document.getElementById("task-title").value = "";
+      document.getElementById("task-prompt").value = "";
+      showBanner(`Task created & RAG recalled ${(data.task?.rag_context_injected || []).length} guardrails!`);
+      fetchState();
+    }
+
+    async function moveTask(taskId, status) {
+      await fetch(`/api/board/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      });
+      fetchState();
+    }
+
+    function updateSandboxDefault() {
+      const tool = document.getElementById("sandbox-tool").value;
+      const inp = document.getElementById("sandbox-input");
+      const ws = boardData?.services?.workspace_root || ".";
+      if (tool === "fs_tree") inp.value = ws;
+      if (tool === "fs_grep") inp.value = "def classify_shell_command";
+      if (tool === "fs_semantic") inp.value = "Self-learning episodic error RAG memory";
+      if (tool === "web_search") inp.value = "n8n AI Agent toolWorkflow documentation";
+      if (tool === "web_crawl") inp.value = "http://127.0.0.1:8090/openapi.json";
+      if (tool === "shell_exec") inp.value = "pytest host-bridge/tests/test_host_bridge.py";
+      if (tool === "db_schema") inp.value = "public";
+    }
+
+    async function runSandboxTool() {
+      const tool = document.getElementById("sandbox-tool").value;
+      const val = document.getElementById("sandbox-input").value;
+      const out = document.getElementById("sandbox-output");
+      const ws = boardData?.services?.workspace_root || ".";
+      out.textContent = "Executing tool via Host Bridge...";
+
+      let url = "/tools/fs/tree";
+      let method = "POST";
+      let body = { workspace_path: val, max_depth: 2 };
+
+      if (tool === "fs_grep") { url = "/tools/fs/grep"; body = { workspace_path: ws, pattern: val }; }
+      if (tool === "fs_semantic") { url = "/tools/fs/semantic-search"; body = { workspace_path: ws, query: val, top_k: 5 }; }
+      if (tool === "web_search") { url = "/tools/web/search"; body = { query: val, max_results: 5 }; }
+      if (tool === "web_crawl") { url = "/tools/web/crawl-page"; body = { url: val, wait_for_js: true, index_into_rag: true }; }
+      if (tool === "shell_exec") { url = "/tools/shell/exec"; body = { workspace_path: ws, command: val }; }
+      if (tool === "db_schema") { url = "/tools/db/schema"; method = "GET"; body = null; }
+
+      const res = await fetch(url, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : null
+      });
+      const data = await res.json();
+      out.textContent = JSON.stringify(data, null, 2);
+      fetchState();
+    }
+
+    async function teachErrorLesson(e) {
+      e.preventDefault();
+      await fetch("/tools/rag/learn-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domain: document.getElementById("err-domain").value,
+          failure_signature: document.getElementById("err-sig").value,
+          failed_action: document.getElementById("err-action").value || "Agent tool execution",
+          error_trace: document.getElementById("err-sig").value,
+          learned_rule: document.getElementById("err-rule").value || undefined
+        })
+      });
+      document.getElementById("err-sig").value = "";
+      document.getElementById("err-action").value = "";
+      document.getElementById("err-rule").value = "";
+      showBanner("New self-learning error lesson embedded and stored in RAG!");
+      fetchState();
+    }
+
+    async function ingestLocalSkills() {
+      const kw = document.getElementById("skill-filter").value || null;
+      const skillsDir = boardData?.services?.skills_dir || "~/.gemini/config/skills";
+      const res = await fetch("/tools/rag/ingest-local-skills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skills_dir: skillsDir, max_skills: 30, filter_keyword: kw })
+      });
+      const data = await res.json();
+      showBanner(`Ingested ${data.count} skills from ${skillsDir}!`);
+      fetchState();
+    }
+
+    async function decideApproval(id, decision) {
+      await fetch(`/api/board/approvals/${id}/decide`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision })
+      });
+      showBanner(`Approval request ${decision}!`);
+      fetchState();
+    }
+
+    async function loadWorkflowsInspector() {
+      const res = await fetch("/api/board/workflows");
+      const data = await res.json();
+      document.getElementById("workflows-list").innerHTML = (data.workflows || []).map(wf => `
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-bold text-white">${wf.name}</h3>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-950 text-indigo-300">${wf.file}</span>
+          </div>
+          <p class="text-[11px] text-slate-400">${wf.node_count} Nodes (${wf.agent_node_count} LangChain / AI Agent Nodes)</p>
+          <div class="flex flex-wrap gap-1.5">
+            ${wf.nodes.map(n => `<span class="text-[10px] px-2 py-0.5 rounded ${n.is_ai ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/40' : 'bg-slate-800 text-slate-300'}">${n.name}</span>`).join("")}
+          </div>
+        </div>
+      `).join("");
+    }
+
+    fetchState();
+    setInterval(fetchState, 5000);
+  </script>
+</body>
+</html>
+

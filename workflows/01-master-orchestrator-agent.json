@@ -1,0 +1,288 @@
+{
+  "name": "01 - Master Orchestrator Agent (Paid LLM -> Local Worker Loop)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dev-task",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b1010001-0001-4000-8000-000000000001",
+      "name": "Developer Board Task Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 340],
+      "webhookId": "dev-task-orchestrator"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/rag/recall",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"task_prompt\": {{ JSON.stringify(($json.body?.task?.title || '') + '\\n' + ($json.body?.task?.prompt || $json.prompt || '')) }},\n  \"top_k_lessons\": 5,\n  \"top_k_skills\": 3,\n  \"top_k_docs\": 4\n}",
+        "options": {}
+      },
+      "id": "b1010001-0002-4000-8000-000000000002",
+      "name": "Pre-Task RAG Recall (Skills & Past Error Lessons)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [430, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/fs/tree",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"workspace_path\": {{ JSON.stringify($node[\"Developer Board Task Webhook\"].json.body?.task?.workspace_path || $env.WORKSPACE_ROOT || \".\") }},\n  \"max_depth\": 2\n}",
+        "options": {}
+      },
+      "id": "b1010001-0003-4000-8000-000000000003",
+      "name": "Inspect Workspace File Tree",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [670, 340]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $node[\"Developer Board Task Webhook\"].json.body?.task?.orchestrator_provider || 'gemini' }}",
+                    "rightValue": "gemini",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "gemini"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $node[\"Developer Board Task Webhook\"].json.body?.task?.orchestrator_provider || 'gemini' }}",
+                    "rightValue": "claude",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "claude"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $node[\"Developer Board Task Webhook\"].json.body?.task?.orchestrator_provider || 'gemini' }}",
+                    "rightValue": "openai",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "openai"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra" }
+      },
+      "id": "b1010001-0004-4000-8000-000000000004",
+      "name": "Route Paid Orchestrator Provider",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [920, 340]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Lead Software Architect & Paid Orchestrator Agent.\nYour job is to decompose the user's development request into deterministic, well-scoped sub-tasks that our FREE Local Ollama Worker LLM (`qwen2.5-coder:7b`) can execute using its tools (`fs_tree`, `fs_grep`, `fs_read`, `fs_patch`, `fs_write`, `web_search`, `web_crawl_page`, `shell_exec`, `db_query`).\n\n### USER DEVELOPMENT PROMPT:\nTitle: {{ $node[\"Developer Board Task Webhook\"].json.body?.task?.title }}\nPrompt: {{ $node[\"Developer Board Task Webhook\"].json.body?.task?.prompt }}\nWorkspace: {{ $node[\"Developer Board Task Webhook\"].json.body?.task?.workspace_path }}\n\n### MANDATORY SELF-LEARNED RAG ERROR GUARDRAILS (NEVER VIOLATE):\n{{ $node[\"Pre-Task RAG Recall (Skills & Past Error Lessons)\"].json.compiled_guardrails }}\n\n### MATCHED PROCEDURAL SKILLS:\n{{ JSON.stringify($node[\"Pre-Task RAG Recall (Skills & Past Error Lessons)\"].json.matched_skills) }}\n\n### CURRENT WORKSPACE TREE:\n{{ JSON.stringify($node[\"Inspect Workspace File Tree\"].json.tree.slice(0, 60)) }}\n\nProduce a JSON array of atomic `subtasks`. Each item MUST include:\n- `step_order` (number)\n- `title` (string)\n- `assigned_specialist` (`local_coder` | `web_researcher` | `db_operator` | `pc_shell_runner`)\n- `prompt_payload` (exact step-by-step instructions + relevant RAG rules for the local LLM worker)\n- `verification_command` (shell command or check to verify completion)",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an elite Principal Engineer orchestrating local coding & web-crawling agents. Keep paid token usage minimal by delegating all file reading, web crawling, code patching, and test running to the Local Ollama Worker."
+        }
+      },
+      "id": "b1010001-0005-4000-8000-000000000005",
+      "name": "Paid Orchestrator AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1220, 340]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": { "temperature": 0.1 }
+      },
+      "id": "b1010001-0006-4000-8000-000000000006",
+      "name": "Google Gemini 2.5 Pro (Orchestrator)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [1120, 580]
+    },
+    {
+      "parameters": {
+        "model": "claude-3-7-sonnet-20250219",
+        "options": { "temperature": 0.1 }
+      },
+      "id": "b1010001-0007-4000-8000-000000000007",
+      "name": "Anthropic Claude Sonnet (Orchestrator)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1260, 580]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": { "temperature": 0.1 }
+      },
+      "id": "b1010001-0008-4000-8000-000000000008",
+      "name": "OpenAI GPT-4o (Orchestrator)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [1400, 580]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $node[\"Developer Board Task Webhook\"].json.body?.task?.id || 'default-orchestrator-session' }}",
+        "tableName": "n8n_orchestrator_chat_history",
+        "contextWindowLength": 10
+      },
+      "id": "b1010001-0009-4000-8000-000000000009",
+      "name": "Postgres Orchestrator Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.1,
+      "position": [1540, 580]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b1010001-0010-4000-8000-000000000010",
+      "name": "Split Sub-Tasks for Local Worker Loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1560, 340]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "02-local-worker-agent-loop",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "b1010001-0011-4000-8000-000000000011",
+      "name": "Dispatch Sub-Task to Local Ollama Worker Agent",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [1820, 340],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "03-self-learning-error-rag",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "b1010001-0012-4000-8000-000000000012",
+      "name": "Trigger Self-Learning Error RAG on Failure",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [2080, 520]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ ($env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090') + '/api/board/tasks/' + ($node[\"Developer Board Task Webhook\"].json.body?.task?.id || 'task-demo-001') }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"status\": \"completed\",\n  \"final_output\": {{ JSON.stringify($json.output || \"All delegated local LLM subtasks completed and verified.\") }}\n}",
+        "options": {}
+      },
+      "id": "b1010001-0013-4000-8000-000000000013",
+      "name": "Update Developer Board Card to Completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2080, 220]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"orchestration_finished\",\n  \"task_id\": {{ JSON.stringify($node[\"Developer Board Task Webhook\"].json.body?.task?.id) }},\n  \"rag_guardrails_applied\": {{ JSON.stringify($node[\"Pre-Task RAG Recall (Skills & Past Error Lessons)\"].json.compiled_guardrails) }}\n}",
+        "options": {}
+      },
+      "id": "b1010001-0014-4000-8000-000000000014",
+      "name": "Respond to Developer Board",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2330, 220]
+    }
+  ],
+  "connections": {
+    "Developer Board Task Webhook": {
+      "main": [[{ "node": "Pre-Task RAG Recall (Skills & Past Error Lessons)", "type": "main", "index": 0 }]]
+    },
+    "Pre-Task RAG Recall (Skills & Past Error Lessons)": {
+      "main": [[{ "node": "Inspect Workspace File Tree", "type": "main", "index": 0 }]]
+    },
+    "Inspect Workspace File Tree": {
+      "main": [[{ "node": "Route Paid Orchestrator Provider", "type": "main", "index": 0 }]]
+    },
+    "Route Paid Orchestrator Provider": {
+      "main": [
+        [{ "node": "Paid Orchestrator AI Agent", "type": "main", "index": 0 }],
+        [{ "node": "Paid Orchestrator AI Agent", "type": "main", "index": 0 }],
+        [{ "node": "Paid Orchestrator AI Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "Google Gemini 2.5 Pro (Orchestrator)": {
+      "ai_languageModel": [[{ "node": "Paid Orchestrator AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Postgres Orchestrator Memory": {
+      "ai_memory": [[{ "node": "Paid Orchestrator AI Agent", "type": "ai_memory", "index": 0 }]]
+    },
+    "Paid Orchestrator AI Agent": {
+      "main": [[{ "node": "Split Sub-Tasks for Local Worker Loop", "type": "main", "index": 0 }]]
+    },
+    "Split Sub-Tasks for Local Worker Loop": {
+      "main": [
+        [{ "node": "Update Developer Board Card to Completed", "type": "main", "index": 0 }],
+        [{ "node": "Dispatch Sub-Task to Local Ollama Worker Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "Dispatch Sub-Task to Local Ollama Worker Agent": {
+      "main": [
+        [{ "node": "Split Sub-Tasks for Local Worker Loop", "type": "main", "index": 0 }],
+        [{ "node": "Trigger Self-Learning Error RAG on Failure", "type": "main", "index": 0 }]
+      ]
+    },
+    "Trigger Self-Learning Error RAG on Failure": {
+      "main": [[{ "node": "Split Sub-Tasks for Local Worker Loop", "type": "main", "index": 0 }]]
+    },
+    "Update Developer Board Card to Completed": {
+      "main": [[{ "node": "Respond to Developer Board", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

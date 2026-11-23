@@ -1,0 +1,234 @@
+{
+  "name": "02 - Local LLM Worker Agent Loop (Ollama + Full Local FS, Web Crawler, DB & PC Tools)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b2020001-0001-4000-8000-000000000001",
+      "name": "When Called by Master Orchestrator",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [180, 340]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Execute this atomic engineering sub-task using your attached tools.\n\n### SUB-TASK ASSIGNMENT:\nSpecialist Role: {{ $json.assigned_specialist || 'local_coder' }}\nTitle: {{ $json.title }}\nInstructions: {{ $json.prompt_payload }}\nWorkspace Path: {{ $json.workspace_path || $env.WORKSPACE_ROOT || '.' }}\n\n### MANDATORY SELF-LEARNED RAG RULES:\n{{ $json.rag_guardrails || '- Always read file line ranges via tool_fs_read before calling tool_fs_patch.\\n- Always use tool_web_crawl_page with wait_for_js=true for modern docs.\\n- Always call tool_db_schema before writing SQL queries.' }}\n\n### EXECUTION PROTOCOL:\n1. Discover context first (`tool_fs_tree`, `tool_fs_grep`, `tool_fs_semantic_search`, or `tool_web_search`).\n2. Read exact target files (`tool_fs_read`) or crawl documentation (`tool_web_crawl_page`).\n3. Apply surgical code changes (`tool_fs_patch` or `tool_fs_write`) or database operations (`tool_db_query`).\n4. Verify your work by running tests (`tool_shell_exec` e.g. `pytest`) and return a concise summary of changes and test output.",
+        "options": {
+          "systemMessage": "You are a precise Local Autonomous Software Engineer & Web Researcher running on Ollama (qwen2.5-coder:7b). Never guess file contents or SQL columns; always invoke your inspection tools first.",
+          "maxIterations": 12
+        }
+      },
+      "id": "b2020001-0002-4000-8000-000000000002",
+      "name": "Local Ollama Worker AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [540, 340]
+    },
+    {
+      "parameters": {
+        "model": "={{ $json.worker_model || 'qwen2.5-coder:7b' }}",
+        "options": {
+          "temperature": 0.1,
+          "numCtx": 16384
+        }
+      },
+      "id": "b2020001-0003-4000-8000-000000000003",
+      "name": "Ollama Local Model (qwen2.5-coder:7b)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [320, 620]
+    },
+    {
+      "parameters": {
+        "toolDescription": "List directory tree of a local workspace folder (respects .gitignore). Input JSON: {\"workspace_path\": \".\", \"max_depth\": 3}",
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/fs/tree",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $fromAI('body', 'JSON object with workspace_path and max_depth') }}"
+      },
+      "id": "b2020001-0004-4000-8000-000000000004",
+      "name": "tool_fs_tree",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [460, 620]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Fast ripgrep regex search across local codebase files. Input JSON: {\"workspace_path\": \"...\", \"pattern\": \"search_regex\", \"file_glob\": \"*.py\"}",
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/fs/grep",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $fromAI('body', 'JSON with workspace_path, pattern, and optional file_glob') }}"
+      },
+      "id": "b2020001-0005-4000-8000-000000000005",
+      "name": "tool_fs_grep",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [600, 620]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Semantic vector search across local workspace files using nomic-embed-text. Input JSON: {\"workspace_path\": \"...\", \"query\": \"natural language or code concept\", \"top_k\": 5}",
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/fs/semantic-search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $fromAI('body', 'JSON with workspace_path, query, and top_k') }}"
+      },
+      "id": "b2020001-0006-4000-8000-000000000006",
+      "name": "tool_fs_semantic_search",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [740, 620]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Read a local file with line numbers by line range. ALWAYS call this before tool_fs_patch. Input JSON: {\"file_path\": \"path/to/file\", \"start_line\": 1, \"end_line\": 200}",
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/fs/read",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $fromAI('body', 'JSON with file_path, start_line, end_line') }}"
+      },
+      "id": "b2020001-0007-4000-8000-000000000007",
+      "name": "tool_fs_read",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [880, 620]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Surgically patch an existing local file by replacing an exact target string with replacement. Input JSON: {\"file_path\": \"...\", \"target\": \"exact old lines\", \"replacement\": \"new lines\"}",
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/fs/patch",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $fromAI('body', 'JSON with file_path, target, replacement') }}"
+      },
+      "id": "b2020001-0008-4000-8000-000000000008",
+      "name": "tool_fs_patch",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1020, 620]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Create or overwrite a local file inside WORKSPACE_ROOT. Input JSON: {\"file_path\": \"...\", \"content\": \"full file content\", \"overwrite\": true}",
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/fs/write",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $fromAI('body', 'JSON with file_path, content, overwrite') }}"
+      },
+      "id": "b2020001-0009-4000-8000-000000000009",
+      "name": "tool_fs_write",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1160, 620]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Search the live web using self-hosted SearXNG / DuckDuckGo to find documentation URLs, GitHub issues, and technical answers. Input JSON: {\"query\": \"search terms\", \"max_results\": 6}",
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/web/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $fromAI('body', 'JSON with query and max_results') }}"
+      },
+      "id": "b2020001-0010-4000-8000-000000000010",
+      "name": "tool_web_search",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1300, 620]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Crawl any web page or documentation URL with Crawl4AI/Playwright JS rendering, extract clean Markdown, and auto-index chunks into pgvector RAG. Input JSON: {\"url\": \"https://...\", \"wait_for_js\": true, \"index_into_rag\": true}",
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/web/crawl-page",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $fromAI('body', 'JSON with url, wait_for_js, index_into_rag') }}"
+      },
+      "id": "b2020001-0011-4000-8000-000000000011",
+      "name": "tool_web_crawl_page",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1440, 620]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Execute terminal/shell commands on the host machine (pytest, git, npm, python3) governed by the 3-tier security policy. Input JSON: {\"command\": \"pytest\", \"workspace_path\": \".\"}",
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/shell/exec",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $fromAI('body', 'JSON with command and workspace_path') }}"
+      },
+      "id": "b2020001-0012-4000-8000-000000000012",
+      "name": "tool_shell_exec",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1580, 620]
+    },
+    {
+      "parameters": {
+        "toolDescription": "Inspect PostgreSQL database tables/columns or execute SQL queries. Input JSON: {\"sql\": \"SELECT id, title, status FROM dev_tasks LIMIT 10\"}",
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/db/query",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $fromAI('body', 'JSON with sql string') }}"
+      },
+      "id": "b2020001-0013-4000-8000-000000000013",
+      "name": "tool_db_query",
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [1720, 620]
+    }
+  ],
+  "connections": {
+    "When Called by Master Orchestrator": {
+      "main": [[{ "node": "Local Ollama Worker AI Agent", "type": "main", "index": 0 }]]
+    },
+    "Ollama Local Model (qwen2.5-coder:7b)": {
+      "ai_languageModel": [[{ "node": "Local Ollama Worker AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "tool_fs_tree": {
+      "ai_tool": [[{ "node": "Local Ollama Worker AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "tool_fs_grep": {
+      "ai_tool": [[{ "node": "Local Ollama Worker AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "tool_fs_semantic_search": {
+      "ai_tool": [[{ "node": "Local Ollama Worker AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "tool_fs_read": {
+      "ai_tool": [[{ "node": "Local Ollama Worker AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "tool_fs_patch": {
+      "ai_tool": [[{ "node": "Local Ollama Worker AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "tool_fs_write": {
+      "ai_tool": [[{ "node": "Local Ollama Worker AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "tool_web_search": {
+      "ai_tool": [[{ "node": "Local Ollama Worker AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "tool_web_crawl_page": {
+      "ai_tool": [[{ "node": "Local Ollama Worker AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "tool_shell_exec": {
+      "ai_tool": [[{ "node": "Local Ollama Worker AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "tool_db_query": {
+      "ai_tool": [[{ "node": "Local Ollama Worker AI Agent", "type": "ai_tool", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

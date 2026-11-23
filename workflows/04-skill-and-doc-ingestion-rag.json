@@ -1,0 +1,85 @@
+{
+  "name": "04 - Deep Web Crawler & Local Skills RAG Ingestion Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ingest-knowledge",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "b4040001-0001-4000-8000-000000000001",
+      "name": "Knowledge Ingestion Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 340],
+      "webhookId": "ingest-knowledge-rag"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body?.mode || 'web_deep_crawl' }}",
+              "rightValue": "local_skills",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b4040001-0002-4000-8000-000000000002",
+      "name": "Local Skills or Deep Web Crawl?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 340]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/rag/ingest-local-skills",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"skills_dir\": {{ JSON.stringify($json.body?.skills_dir || $env.SKILLS_DIR || '~/.gemini/config/skills') }},\n  \"max_skills\": {{ $json.body?.max_skills || 30 }},\n  \"filter_keyword\": {{ JSON.stringify($json.body?.filter_keyword || null) }}\n}",
+        "options": {}
+      },
+      "id": "b4040001-0003-4000-8000-000000000003",
+      "name": "Ingest Local SKILL.md Library into pgvector",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 220]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/web/deep-crawl",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"seed_url\": {{ JSON.stringify($json.body?.seed_url || 'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/') }},\n  \"max_depth\": {{ $json.body?.max_depth || 2 }},\n  \"max_pages\": {{ $json.body?.max_pages || 10 }},\n  \"same_domain_only\": true,\n  \"index_into_rag\": true\n}",
+        "options": {}
+      },
+      "id": "b4040001-0004-4000-8000-000000000004",
+      "name": "Deep Crawl Documentation Site into pgvector",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [740, 460]
+    }
+  ],
+  "connections": {
+    "Knowledge Ingestion Webhook": {
+      "main": [[{ "node": "Local Skills or Deep Web Crawl?", "type": "main", "index": 0 }]]
+    },
+    "Local Skills or Deep Web Crawl?": {
+      "main": [
+        [{ "node": "Ingest Local SKILL.md Library into pgvector", "type": "main", "index": 0 }],
+        [{ "node": "Deep Crawl Documentation Site into pgvector", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

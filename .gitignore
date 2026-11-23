@@ -1,0 +1,24 @@
+# Secrets & local environment
+.env
+*.pem
+*.key
+
+# Runtime state, logs & local n8n home
+.logs/
+.n8n-home/
+host-bridge/.local_state.json
+
+# Python
+.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node / Next.js
+dev-board/node_modules/
+dev-board/.next/
+dev-board/out/
+
+# macOS
+.DS_Store
+

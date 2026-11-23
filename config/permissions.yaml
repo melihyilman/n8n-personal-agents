@@ -1,0 +1,126 @@
+# ============================================================================
+# Host PC & Agent Capability Permission Policy
+# ============================================================================
+# Tiers:
+#   - AUTO_SAFE: Executed immediately without prompting.
+#   - WORKSPACE_WRITE: Allowed automatically within allowed_workspaces; logged.
+#   - APPROVAL_REQUIRED: Pauses execution and creates an approval request on
+#     the Developer Mission Control Board until the user approves/rejects.
+#   - BLOCKED: Strictly forbidden.
+
+workspace_security:
+  allowed_workspaces:
+    - "${WORKSPACE_ROOT}"
+    - "~/newdev"
+    - "~/.gemini/config/skills"
+  writable_workspaces:
+    - "${WORKSPACE_ROOT}"
+    - "~/newdev"
+  blocked_paths:
+    - "/System"
+    - "/etc"
+    - "/var"
+    - "~/.ssh"
+    - "~/.aws"
+    - "~/.gnupg"
+  max_file_read_bytes: 524288      # 512 KB per single read
+  max_grep_matches: 200
+
+shell_permissions:
+  auto_safe_prefixes:
+    - "git status"
+    - "git diff"
+    - "git log"
+    - "git branch"
+    - "git show"
+    - "ls"
+    - "pwd"
+    - "which"
+    - "cat"
+    - "head"
+    - "tail"
+    - "wc"
+    - "rg"
+    - "fd"
+    - "find"
+    - "pytest"
+    - "npm test"
+    - "npm run lint"
+    - "npm run typecheck"
+    - "npm run build"
+    - "pnpm test"
+    - "pnpm build"
+    - "python3 -m pytest"
+    - "python3 -m py_compile"
+    - "cargo check"
+    - "cargo test"
+    - "go test"
+    - "lsof -i"
+
+  workspace_write_prefixes:
+    - "git add"
+    - "git commit"
+    - "git checkout"
+    - "git switch"
+    - "mkdir"
+    - "touch"
+    - "cp"
+    - "mv"
+    - "npm install"
+    - "pnpm install"
+    - "pip install"
+    - "uv pip install"
+    - "python3 "
+    - "node "
+    - "tsx "
+
+  approval_required_patterns:
+    - "rm -rf"
+    - "git push"
+    - "git reset --hard"
+    - "git clean"
+    - "docker rm"
+    - "docker system prune"
+    - "kill "
+    - "pkill "
+    - "killall "
+    - "brew install"
+    - "brew uninstall"
+    - "curl -X POST"
+    - "curl -X DELETE"
+    - "chmod "
+    - "chown "
+
+  blocked_patterns:
+    - "sudo "
+    - "mkfs"
+    - "dd if="
+    - ":(){:|:&};:"
+    - "shutdown"
+    - "reboot"
+    - "> /dev/sd"
+
+database_permissions:
+  auto_safe_statements:
+    - "SELECT"
+    - "EXPLAIN"
+    - "SHOW"
+  workspace_write_statements:
+    - "INSERT"
+    - "UPDATE"
+    - "CREATE TABLE"
+    - "CREATE INDEX"
+    - "ALTER TABLE"
+  approval_required_statements:
+    - "DELETE"
+    - "TRUNCATE"
+    - "DROP"
+
+web_crawler_permissions:
+  max_crawl_depth: 3
+  max_pages_per_job: 35
+  request_timeout_seconds: 30
+  respect_robots_txt: false
+  blocked_domains:
+    - "localhost:8090" # Prevent SSRF recursion into host-bridge
+

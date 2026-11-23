@@ -1,0 +1,85 @@
+{
+  "name": "03 - Self-Learning Episodic Error RAG (Post-Mortem -> nomic-embed-text -> pgvector)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "b3030001-0001-4000-8000-000000000001",
+      "name": "When Called on Sub-Task Error",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [180, 260]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "learn-error",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "b3030001-0002-4000-8000-000000000002",
+      "name": "Manual Teach / Error Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [180, 440],
+      "webhookId": "self-learning-error-rag"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Self-Learning Post-Mortem Reflection Agent.\nAn agent or tool call failed. Analyze the failure and produce a strict JSON object with:\n- `domain` (`web_crawler` | `local_fs` | `sql_query` | `shell_cmd` | `code_gen`)\n- `failure_signature` (concise error identifier)\n- `failed_action` (what the agent tried to do)\n- `root_cause` (why it failed)\n- `learned_rule` (starts with 'RULE: ' — exact actionable instruction to inject into future system prompts so this mistake never happens again)\n- `verified_fix` (example of the corrected call)\n\n### FAILURE CONTEXT:\n{{ JSON.stringify($json.body || $json) }}",
+        "options": {
+          "systemMessage": "You extract permanent, high-signal engineering lessons from failures for a personal RAG memory bank. Output valid JSON only."
+        }
+      },
+      "id": "b3030001-0003-4000-8000-000000000003",
+      "name": "Error Reflection & Lesson Synthesizer Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [520, 340]
+    },
+    {
+      "parameters": {
+        "model": "qwen2.5-coder:7b",
+        "options": { "temperature": 0.1 }
+      },
+      "id": "b3030001-0004-4000-8000-000000000004",
+      "name": "Ollama Reflection Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [520, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.HOST_BRIDGE_URL || 'http://host.docker.internal:8090' }}/tools/rag/learn-error",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"domain\": {{ JSON.stringify($json.domain || $json.body?.domain || 'code_gen') }},\n  \"failure_signature\": {{ JSON.stringify($json.failure_signature || $json.body?.failure_signature || 'Subtask Execution Failure') }},\n  \"failed_action\": {{ JSON.stringify($json.failed_action || $json.body?.failed_action || 'Agent tool invocation') }},\n  \"error_trace\": {{ JSON.stringify($json.error_trace || $json.body?.error_trace || $json.output || 'Unknown error') }},\n  \"root_cause\": {{ JSON.stringify($json.root_cause || $json.body?.root_cause) }},\n  \"learned_rule\": {{ JSON.stringify($json.learned_rule || $json.body?.learned_rule) }},\n  \"verified_fix\": {{ JSON.stringify($json.verified_fix || $json.body?.verified_fix || '') }}\n}",
+        "options": {}
+      },
+      "id": "b3030001-0005-4000-8000-000000000005",
+      "name": "Embed with nomic-embed-text & Upsert to pgvector",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 340]
+    }
+  ],
+  "connections": {
+    "When Called on Sub-Task Error": {
+      "main": [[{ "node": "Error Reflection & Lesson Synthesizer Agent", "type": "main", "index": 0 }]]
+    },
+    "Manual Teach / Error Webhook": {
+      "main": [[{ "node": "Error Reflection & Lesson Synthesizer Agent", "type": "main", "index": 0 }]]
+    },
+    "Ollama Reflection Model": {
+      "ai_languageModel": [[{ "node": "Error Reflection & Lesson Synthesizer Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Error Reflection & Lesson Synthesizer Agent": {
+      "main": [[{ "node": "Embed with nomic-embed-text & Upsert to pgvector", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+
